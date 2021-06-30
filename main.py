@@ -1,17 +1,21 @@
-from sqlalchemy import create_engine
 from common import Base
-from sqlalchemy.orm import sessionmaker
 from models.Coin import Coin
 from models.QuoteHistory import QuoteHistory
 from datetime import datetime
 import requests
-from Constants import QUOTATION_API_URL
+from constants import QUOTATION_API_URL
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 Session = sessionmaker()
+engine = create_engine('sqlite:///database.sqlite', echo=False)
+Base.metadata.create_all(engine)
+Session.configure(bind=engine)
+session = Session()
 
 
-def convertCoinToReal(user, coin):  # Isso deveria converter um determinado valor? Ou só obter a cotação?
-    response = requests.get(QUOTATION_API_URL + coin.isoCod + "-BRL")
+def convertCoinToReal(user, coin, session):
+    response = requests.get(QUOTATION_API_URL + 'last/' + coin.isoCod + "-BRL")
     map = response.json()[coin.isoCod + 'BRL']
     quote = QuoteHistory(coinId=coin.id, coinValue=map['bid'], codeIn=map['codein'], codeOut=map['code'], username=user,
                          createdAt=datetime.now())
@@ -20,8 +24,8 @@ def convertCoinToReal(user, coin):  # Isso deveria converter um determinado valo
     return quote.coinValue
 
 
-def convertRealToCoin(user, coin):
-    response = requests.get(QUOTATION_API_URL + "BRL-" + coin.isoCod)
+def convertRealToCoin(user, coin, session):
+    response = requests.get(QUOTATION_API_URL + 'last/' + "BRL-" + coin.isoCod)
     map = response.json()['BRL' + coin.isoCod]
     quote = QuoteHistory(coinId=coin.id, coinValue=map['bid'], codeIn=map['codein'], codeOut=map['code'], username=user,
                          createdAt=datetime.now())
@@ -31,11 +35,6 @@ def convertRealToCoin(user, coin):
 
 
 if __name__ == "__main__":
-
-    engine = create_engine('sqlite:///database.sqlite', echo=False)
-    Base.metadata.create_all(engine)
-    Session.configure(bind=engine)
-    session = Session()
 
     while True:
         print("\nConverter moeda(X) para real --------- 1")
@@ -54,7 +53,7 @@ if __name__ == "__main__":
                     print(str(currentCoins[i]) + "--------------- " + str(i))
                 index = int(input("Escolha uma moeda: "))
                 username = input("\nQual o seu nome?")
-                print(convertCoinToReal(username, currentCoins[index]))
+                print(convertCoinToReal(username, currentCoins[index], session))
 
         elif opt == 2:
             currentCoins = Coin.get_all(session)
@@ -65,7 +64,7 @@ if __name__ == "__main__":
                     print(str(currentCoins[i]) + "--------------- " + str(i))
                 index = int(input("Escolha uma moeda: "))
                 username = input("\nQual o seu nome?")
-                print(convertRealToCoin(username, currentCoins[index]))
+                print(convertRealToCoin(username, currentCoins[index], session))
 
         elif opt == 3:
             newCoin = Coin()
@@ -82,3 +81,4 @@ if __name__ == "__main__":
 
         else:
             break
+

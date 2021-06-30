@@ -1,1 +1,0 @@
-QUOTATION_API_URL = 'https://economia.awesomeapi.com.br/json/last/'
